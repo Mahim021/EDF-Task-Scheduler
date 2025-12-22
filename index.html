@@ -1,0 +1,1394 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EDF Task Scheduler</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+    * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0e27;
+            background-image: radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%), radial-gradient(at 100% 100%, rgba(124, 58, 237, 0.15) 0px, transparent 50%);
+            min-height: 100vh;
+            color: #e2e8f0;
+        }
+        
+        .header {
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(100, 116, 139, 0.2);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+        }
+        
+        .header-content {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 1rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .header-title h1 {
+            font-size: 1.75rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #818cf8 0%, #c084fc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.02em;
+        }
+        
+        .header-subtitle {
+            font-size: 0.875rem;
+            color: #94a3b8;
+            font-weight: 400;
+        }
+        
+        .save-status {
+            font-size: 0.75rem;
+            color: #34d399;
+            background: rgba(52, 211, 153, 0.1);
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            margin-left: 1rem;
+        }
+        
+        .btn-primary {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.625rem 1.25rem;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: white;
+            border: none;
+            border-radius: 0.625rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 600;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(99, 102, 241, 0.5);
+        }
+        
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+        
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 5rem 0;
+        }
+        
+        .spinner {
+            width: 4rem;
+            height: 4rem;
+            border: 4px solid rgba(99, 102, 241, 0.2);
+            border-top-color: #6366f1;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        }
+        
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+        
+        @keyframes pulse {
+            0%,
+            100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+        
+        .grid {
+            display: grid;
+            gap: 1.5rem;
+        }
+        
+        .grid-2 {
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        }
+        
+        .grid-3 {
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        }
+        
+        .stats-card {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(99, 102, 241, 0.05) 100%);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(8px);
+            cursor: default;
+            transition: all 0.3s ease;
+        }
+        
+        .stats-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+        }
+        
+        .stats-card.critical {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(239, 68, 68, 0.05) 100%);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .stats-card.critical:hover {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.25) 0%, rgba(239, 68, 68, 0.1) 100%);
+            transform: translateY(-4px);
+        }
+        
+        .stats-card.recurring {
+            background: linear-gradient(135deg, rgba(124, 58, 237, 0.15) 0%, rgba(124, 58, 237, 0.05) 100%);
+            border: 1px solid rgba(124, 58, 237, 0.2);
+        }
+        
+        .stats-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .stats-label {
+            font-size: 0.875rem;
+            opacity: 0.7;
+            font-weight: 500;
+            letter-spacing: 0.025em;
+        }
+        
+        .stats-number {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-top: 0.5rem;
+            letter-spacing: -0.04em;
+        }
+        
+        .stats-subtitle {
+            font-size: 0.75rem;
+            opacity: 0.8;
+            margin-top: 0.25rem;
+        }
+        
+        .task-form {
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(12px);
+            border-radius: 1rem;
+            padding: 2rem;
+            border: 1px solid rgba(100, 116, 139, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            margin-bottom: 1.5rem;
+        }
+        
+        .task-form.hidden {
+            display: none;
+        }
+        
+        .form-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-header h2 {
+            font-size: 1.125rem;
+            font-weight: 600;
+        }
+        
+        .btn-close {
+            background: none;
+            border: none;
+            color: #9ca3af;
+            cursor: pointer;
+            font-size: 1.5rem;
+            transition: color 0.2s;
+        }
+        
+        .btn-close:hover {
+            color: #d1d5db;
+        }
+        
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        
+        .form-label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #d1d5db;
+            margin-bottom: 0.5rem;
+        }
+        
+        .form-input,
+        .form-textarea,
+        .form-select {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(100, 116, 139, 0.3);
+            border-radius: 0.625rem;
+            color: #e2e8f0;
+            font-size: 0.9375rem;
+            transition: all 0.3s ease;
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .form-input:focus,
+        .form-textarea:focus,
+        .form-select:focus {
+            outline: none;
+            border-color: #6366f1;
+            background: rgba(30, 41, 59, 0.7);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+        }
+        
+        .form-textarea {
+            resize: none;
+            font-family: inherit;
+        }
+        
+        .form-input::placeholder,
+        .form-textarea::placeholder {
+            color: #6b7280;
+        }
+        
+        .task-type-selector {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .task-type-btn {
+            flex: 1;
+            padding: 0.875rem;
+            background: rgba(30, 41, 59, 0.5);
+            border: 2px solid rgba(100, 116, 139, 0.3);
+            border-radius: 0.75rem;
+            color: #cbd5e1;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 0.9375rem;
+            font-weight: 600;
+        }
+        
+        .task-type-btn:hover {
+            border-color: rgba(100, 116, 139, 0.5);
+            background: rgba(30, 41, 59, 0.7);
+        }
+        
+        .task-type-btn.active {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            border-color: transparent;
+            color: white;
+            box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
+        }
+        
+        .task-type-btn.recurring.active {
+            background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%);
+            box-shadow: 0 4px 14px rgba(139, 92, 246, 0.4);
+        }
+        
+        .btn-submit {
+            width: 100%;
+            padding: 0.875rem;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: white;
+            border: none;
+            border-radius: 0.75rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 0.9375rem;
+            box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
+        }
+        
+        .btn-submit:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(99, 102, 241, 0.5);
+        }
+        
+        .btn-submit:disabled {
+            background: rgba(100, 116, 139, 0.3);
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+        
+        .section {
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(12px);
+            border-radius: 1rem;
+            border: 1px solid rgba(100, 116, 139, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            overflow: hidden;
+            margin-bottom: 1.5rem;
+        }
+        
+        .section.critical {
+            border: 1px solid rgba(239, 68, 68, 0.4);
+        }
+        
+        .section.recurring {
+            border: 1px solid rgba(124, 58, 237, 0.4);
+        }
+        
+        .section-header {
+            background: linear-gradient(90deg, rgba(99, 102, 241, 0.2) 0%, rgba(139, 92, 246, 0.2) 100%);
+            padding: 1.25rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(100, 116, 139, 0.2);
+        }
+        
+        .section-header.critical {
+            background: linear-gradient(90deg, rgba(239, 68, 68, 0.2) 0%, rgba(248, 113, 113, 0.2) 100%);
+        }
+        
+        .section-header.recurring {
+            background: linear-gradient(90deg, rgba(139, 92, 246, 0.2) 0%, rgba(168, 85, 247, 0.2) 100%);
+        }
+        
+        .section-title {
+            font-size: 1.125rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            letter-spacing: -0.01em;
+        }
+        
+        .task-list {
+            border-top: 1px solid rgba(100, 116, 139, 0.2);
+        }
+        
+        .task-item {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid rgba(100, 116, 139, 0.15);
+            transition: all 0.3s ease;
+        }
+        
+        .task-item:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .task-item.critical {
+            background: rgba(239, 68, 68, 0.05);
+        }
+        
+        .task-item.critical:hover {
+            background: rgba(239, 68, 68, 0.1);
+        }
+        
+        .task-item:last-child {
+            border-bottom: none;
+        }
+        
+        .task-content {
+            display: flex;
+            gap: 1rem;
+            align-items: start;
+        }
+        
+        .task-number {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 2.5rem;
+            height: 2.5rem;
+            background: rgba(99, 102, 241, 0.15);
+            color: #a5b4fc;
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            border-radius: 0.75rem;
+            font-weight: 700;
+            font-size: 0.875rem;
+            flex-shrink: 0;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        
+        .task-number.critical {
+            background: rgba(239, 68, 68, 0.2);
+            border-color: rgba(239, 68, 68, 0.4);
+            color: #fca5a5;
+            animation: pulse 2s infinite;
+        }
+        
+        .task-number.recurring {
+            background: rgba(139, 92, 246, 0.2);
+            border-color: rgba(139, 92, 246, 0.3);
+            color: #c4b5fd;
+        }
+        
+        .task-details {
+            flex: 1;
+        }
+        
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            gap: 1rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .task-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #f1f5f9;
+            letter-spacing: -0.01em;
+        }
+        
+        .task-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-shrink: 0;
+        }
+        
+        .btn-icon {
+            background: rgba(100, 116, 139, 0.15);
+            border: 1px solid rgba(100, 116, 139, 0.25);
+            color: #94a3b8;
+            cursor: pointer;
+            padding: 0.5rem 0.875rem;
+            border-radius: 0.5rem;
+            transition: all 0.3s ease;
+            font-size: 0.8125rem;
+            font-weight: 600;
+        }
+        
+        .btn-icon:hover {
+            background: rgba(99, 102, 241, 0.2);
+            border-color: rgba(99, 102, 241, 0.4);
+            color: #a5b4fc;
+        }
+        
+        .btn-icon.delete:hover {
+            background: rgba(239, 68, 68, 0.2);
+            border-color: rgba(239, 68, 68, 0.4);
+            color: #fca5a5;
+        }
+        
+        .btn-icon.complete:hover {
+            background: rgba(34, 197, 94, 0.2);
+            border-color: rgba(34, 197, 94, 0.4);
+            color: #86efac;
+        }
+        
+        .task-description {
+            color: #cbd5e1;
+            font-size: 0.9375rem;
+            margin-bottom: 0.75rem;
+            line-height: 1.6;
+        }
+        
+        .task-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+        
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.375rem 0.875rem;
+            border-radius: 0.5rem;
+            font-size: 0.8125rem;
+            font-weight: 600;
+            letter-spacing: 0.01em;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        
+        .badge.urgent {
+            background: rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+        
+        .badge.warning {
+            background: rgba(251, 146, 60, 0.2);
+            color: #fdba74;
+            border: 1px solid rgba(251, 146, 60, 0.3);
+        }
+        
+        .badge.caution {
+            background: rgba(234, 179, 8, 0.2);
+            color: #fde047;
+            border: 1px solid rgba(234, 179, 8, 0.3);
+        }
+        
+        .badge.safe {
+            background: rgba(34, 197, 94, 0.2);
+            color: #86efac;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+        
+        .badge.overdue {
+            background: rgba(239, 68, 68, 0.25);
+            color: #fca5a5;
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            animation: pulse 2s infinite;
+        }
+        
+        .performance-section {
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(12px);
+            border-radius: 1rem;
+            border: 1px solid rgba(100, 116, 139, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            overflow: hidden;
+            margin-bottom: 1.5rem;
+        }
+        
+        .performance-header {
+            background: linear-gradient(90deg, rgba(99, 102, 241, 0.2) 0%, rgba(139, 92, 246, 0.2) 100%);
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid rgba(100, 116, 139, 0.2);
+        }
+        
+        .performance-content {
+            padding: 3rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .score-display {
+            position: relative;
+        }
+        
+        .score-circle {
+            position: relative;
+            width: 240px;
+            height: 240px;
+        }
+        
+        .score-circle svg {
+            width: 240px;
+            height: 240px;
+        }
+        
+        .score-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+        
+        .score-percentage {
+            font-size: 3rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #818cf8 0%, #c084fc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.04em;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        
+        .score-label {
+            font-size: 0.9375rem;
+            color: #94a3b8;
+            margin-top: 0.25rem;
+            font-weight: 500;
+        }
+        
+        .score-stats {
+            display: flex;
+            gap: 2rem;
+            flex-wrap: wrap;
+        }
+        
+        .score-stat {
+            text-align: center;
+            padding: 1.5rem;
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(100, 116, 139, 0.2);
+            border-radius: 0.75rem;
+            min-width: 140px;
+        }
+        
+        .score-stat-value {
+            font-size: 2rem;
+            font-weight: 800;
+            color: #f1f5f9;
+            font-family: 'JetBrains Mono', monospace;
+            letter-spacing: -0.02em;
+        }
+        
+        .score-stat-label {
+            font-size: 0.8125rem;
+            color: #94a3b8;
+            margin-top: 0.5rem;
+            font-weight: 500;
+        }
+        
+        border: 1px solid rgba(239, 68, 68, 0.4);
+        animation: pulse 2s infinite;
+    }
+    .badge.high {
+        background: rgba(239, 68, 68, 0.2);
+        color: #fca5a5;
+    }
+    .badge.medium {
+        background: rgba(234, 179, 8, 0.2);
+        color: #fde047;
+    }
+    .badge.low {
+        background: rgba(59, 130, 246, 0.2);
+        color: #93c5fd;
+    }
+    .badge.recurring-type {
+        background: rgba(139, 92, 246, 0.2);
+        color: #c4b5fd;
+        border: 1px solid rgba(139, 92, 246, 0.3);
+    }
+    .badge.fixed-type {
+        background: rgba(99, 102, 241, 0.2);
+        color: #a5b4fc;
+        border: 1px solid rgba(99, 102, 241, 0.3);
+    }
+    .badge.info {
+        color: #94a3b8;
+        background: rgba(100, 116, 139, 0.15);
+        border: 1px solid rgba(100, 116, 139, 0.25);
+    }
+    .empty-state {
+        padding: 3rem 1.5rem;
+        text-align: center;
+        color: #9ca3af;
+    }
+    .empty-text {
+        font-size: 1.125rem;
+        margin-bottom: 0.5rem;
+    }
+    .empty-subtext {
+        font-size: 0.875rem;
+    }
+    @media (max-width: 768px) {
+        .header-content {
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .stats-number {
+            font-size: 1.5rem;
+        }
+        
+        .task-header {
+            flex-direction: column;
+        }
+        
+        .task-meta {
+            flex-direction: column;
+            align-items: start;
+        }
+    }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <div class="header-content">
+            <div class="header-left">
+                <div class="header-title">
+                    <h1>Task Scheduler</h1>
+                    <p class="header-subtitle">Organized by Earliest Deadline First</p>
+                </div>
+                <span id="saveStatus" class="save-status" style="display: none;"></span>
+            </div>
+            <button class="btn-primary" onclick="toggleAddTask()">
+                <span>New Task</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p style="color: #9ca3af;">Loading your tasks...</p>
+        </div>
+
+        <div id="mainContent" style="display: none;">
+            <div id="taskForm" class="task-form hidden">
+                <div class="form-header">
+                    <h2 id="formTitle">Add New Task</h2>
+                    <button class="btn-close" onclick="closeTaskForm()">×</button>
+                </div>
+
+                <div class="task-type-selector">
+                    <button type="button" class="task-type-btn active" onclick="selectTaskType('fixed')" id="fixedBtn">
+                        Fixed Deadline
+                    </button>
+                    <button type="button" class="task-type-btn recurring" onclick="selectTaskType('recurring')" id="recurringBtn">
+                        Recurring Task
+                    </button>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Task Title *</label>
+                    <input type="text" id="taskTitle" class="form-input" placeholder="Enter task title">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea id="taskDescription" class="form-textarea" rows="3" placeholder="Add details..."></textarea>
+                </div>
+                <div class="form-group" id="deadlineGroup">
+                    <label class="form-label" id="deadlineLabel">Deadline *</label>
+                    <input type="date" id="taskDeadline" class="form-input">
+                </div>
+                <div class="form-group" id="recurrenceGroup" style="display: none;">
+                    <label class="form-label">Recurrence Interval *</label>
+                    <select id="recurrenceInterval" class="form-select">
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly">Monthly</option>
+                    </select>
+                </div>
+                <button id="submitBtn" class="btn-submit" onclick="saveTask()">Add Task</button>
+            </div>
+
+            <div class="grid grid-3">
+                <div class="stats-card">
+                    <div class="stats-content">
+                        <div>
+                            <p class="stats-label">Fixed Tasks</p>
+                            <p class="stats-number" id="fixedCount">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="stats-card recurring">
+                    <div class="stats-content">
+                        <div>
+                            <p class="stats-label">Recurring Tasks</p>
+                            <p class="stats-number" id="recurringCount">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="stats-card critical" onclick="toggleCritical()">
+                    <div class="stats-content">
+                        <div>
+                            <p class="stats-label">Critical Tasks</p>
+                            <p class="stats-number" id="criticalCount">0</p>
+                            <p class="stats-subtitle">Deadline
+                                < 3 days</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section performance-section">
+                <div class="section-header performance-header">
+                    <h2 class="section-title">Completion on Time Rate</h2>
+                </div>
+                <div class="performance-content">
+                    <div class="score-display">
+                        <div class="score-circle">
+                            <svg width="240" height="240" viewBox="0 0 240 240">
+                                <circle cx="120" cy="120" r="100" fill="none" stroke="rgba(100, 116, 139, 0.2)" stroke-width="14"/>
+                                <circle id="scoreCircle" cx="120" cy="120" r="100" fill="none" stroke="url(#scoreGradient)" stroke-width="14" 
+                                    stroke-dasharray="628.32" stroke-dashoffset="628.32" stroke-linecap="round" 
+                                    transform="rotate(-90 120 120)" style="transition: stroke-dashoffset 1s ease"/>
+                                <defs>
+                                    <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
+                                        <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+                                    </linearGradient>
+                                </defs>
+                            </svg>
+                            <div class="score-text">
+                                <div class="score-percentage" id="scorePercentage">0%</div>
+                                <div class="score-label">On Time Rate</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="criticalSection" class="section critical" style="display: none;">
+                <div class="section-header critical">
+                    <h2 class="section-title">
+                        <span>Critical Tasks - Urgent Attention Required!</span>
+                    </h2>
+                    <button class="btn-close" onclick="toggleCritical()">×</button>
+                </div>
+                <div id="criticalList" class="task-list"></div>
+            </div>
+
+            <div class="section">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <span>Fixed Tasks (EDF Order)</span>
+                    </h2>
+                </div>
+                <div id="fixedTaskList" class="task-list"></div>
+            </div>
+
+            <div class="section recurring">
+                <div class="section-header recurring">
+                    <h2 class="section-title">
+                        <span>Recurring Tasks (EDF Order)</span>
+                    </h2>
+                </div>
+                <div id="recurringTaskList" class="task-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let tasks = [];
+        let editingTaskId = null;
+        let showCritical = false;
+        let currentTaskType = 'fixed';
+        let midnightCheckInterval;
+        let stats = {
+            completedOnTime: 0,
+            deletedOrExpired: 0,
+            totalFinished: 0
+        };
+
+        window.addEventListener('DOMContentLoaded', () => {
+            loadTasks();
+            loadStats();
+            checkAndResetTasks();
+            removeExpiredFixedTasks();
+            updateCompletionScore();
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('mainContent').style.display = 'block';
+
+            // Start midnight check
+            startMidnightCheck();
+        });
+
+        function startMidnightCheck() {
+            // Check every minute if it's past midnight
+            midnightCheckInterval = setInterval(() => {
+                const now = new Date();
+                const lastCheck = localStorage.getItem('lastMidnightCheck');
+                const today = now.toDateString();
+
+                if (lastCheck !== today) {
+                    localStorage.setItem('lastMidnightCheck', today);
+                    checkAndResetTasks();
+                    removeExpiredFixedTasks();
+                }
+            }, 60000); // Check every minute
+        }
+
+        function loadTasks() {
+            try {
+                const savedTasks = localStorage.getItem('edf-tasks-v3');
+                if (savedTasks) {
+                    tasks = JSON.parse(savedTasks);
+                    showSaveStatus('Data loaded');
+                }
+            } catch (error) {
+                console.log('No existing tasks found', error);
+            }
+            renderTasks();
+        }
+
+        function loadStats() {
+            try {
+                const savedStats = localStorage.getItem('edf-stats-v3');
+                if (savedStats) {
+                    stats = JSON.parse(savedStats);
+                }
+            } catch (error) {
+                console.log('No existing stats found', error);
+            }
+        }
+
+        function saveTasks() {
+            try {
+                localStorage.setItem('edf-tasks-v3', JSON.stringify(tasks));
+                showSaveStatus('Saved');
+            } catch (error) {
+                console.error('Failed to save:', error);
+                showSaveStatus('Save failed');
+            }
+        }
+
+        function saveStats() {
+            try {
+                localStorage.setItem('edf-stats-v3', JSON.stringify(stats));
+            } catch (error) {
+                console.error('Failed to save stats:', error);
+            }
+        }
+
+        function updateCompletionScore() {
+            const totalTasks = stats.totalFinished;
+            const completedOnTime = stats.completedOnTime;
+
+            const percentage = totalTasks > 0 ? Math.round((completedOnTime / totalTasks) * 100) : 0;
+
+            // Update percentage display
+            document.getElementById('scorePercentage').textContent = percentage + '%';
+
+            // Update circle progress
+            const circle = document.getElementById('scoreCircle');
+            const circumference = 628.32;
+            const offset = circumference - (percentage / 100) * circumference;
+            circle.style.strokeDashoffset = offset;
+        }
+
+        function showSaveStatus(message) {
+            const status = document.getElementById('saveStatus');
+            status.textContent = message;
+            status.style.display = 'inline-block';
+            setTimeout(() => {
+                status.style.display = 'none';
+            }, 2000);
+        }
+
+        function selectTaskType(type) {
+            currentTaskType = type;
+            const fixedBtn = document.getElementById('fixedBtn');
+            const recurringBtn = document.getElementById('recurringBtn');
+            const deadlineGroup = document.getElementById('deadlineGroup');
+            const recurrenceGroup = document.getElementById('recurrenceGroup');
+
+            if (type === 'fixed') {
+                fixedBtn.classList.add('active');
+                recurringBtn.classList.remove('active');
+                deadlineGroup.style.display = 'block';
+                recurrenceGroup.style.display = 'none';
+            } else {
+                recurringBtn.classList.add('active');
+                fixedBtn.classList.remove('active');
+                deadlineGroup.style.display = 'none';
+                recurrenceGroup.style.display = 'block';
+            }
+        }
+
+        function removeExpiredFixedTasks() {
+            const today = getTodayString();
+            const initialLength = tasks.length;
+
+            let expiredCount = 0;
+            tasks = tasks.filter(task => {
+                if (task.taskType === 'fixed' && task.deadline < today) {
+                    expiredCount++;
+                    return false; // Remove expired fixed task
+                }
+                return true;
+            });
+
+            if (expiredCount > 0) {
+                // Track expired tasks
+                stats.deletedOrExpired += expiredCount;
+                stats.totalFinished += expiredCount;
+                saveStats();
+                updateCompletionScore();
+            }
+
+            if (tasks.length !== initialLength) {
+                saveTasks();
+                renderTasks();
+            }
+        }
+
+        function checkAndResetTasks() {
+            const today = getTodayString();
+            let tasksModified = false;
+
+            for (let i = 0; i < tasks.length; i++) {
+                const task = tasks[i];
+                if (task.taskType === 'recurring') {
+                    const taskDate = task.deadline;
+                    if (taskDate < today) {
+                        // Calculate next deadline based on recurrence interval
+                        const nextDeadline = getNextRecurrenceDate(task.recurrenceInterval);
+                        task.deadline = nextDeadline;
+                        task.completed = false;
+                        tasksModified = true;
+                    }
+                }
+            }
+
+            if (tasksModified) {
+                saveTasks();
+                renderTasks();
+            }
+        }
+
+        function getNextRecurrenceDate(interval) {
+            const now = new Date();
+            const next = new Date(now);
+
+            switch (interval) {
+                case 'daily':
+                    next.setDate(next.getDate() + 1);
+                    break;
+                case 'weekly':
+                    next.setDate(next.getDate() + 7);
+                    break;
+                case 'monthly':
+                    next.setMonth(next.getMonth() + 1);
+                    break;
+            }
+
+            return next.toISOString().split('T')[0];
+        }
+
+        function getTodayString() {
+            const today = new Date();
+            return today.toISOString().split('T')[0];
+        }
+
+        function toggleAddTask() {
+            const form = document.getElementById('taskForm');
+            if (form.classList.contains('hidden')) {
+                form.classList.remove('hidden');
+                editingTaskId = null;
+                document.getElementById('formTitle').textContent = 'Add New Task';
+                document.getElementById('submitBtn').textContent = 'Add Task';
+                clearForm();
+            } else {
+                closeTaskForm();
+            }
+        }
+
+        function closeTaskForm() {
+            document.getElementById('taskForm').classList.add('hidden');
+            clearForm();
+            editingTaskId = null;
+        }
+
+        function clearForm() {
+            document.getElementById('taskTitle').value = '';
+            document.getElementById('taskDescription').value = '';
+            document.getElementById('taskDeadline').value = '';
+            document.getElementById('recurrenceInterval').value = 'daily';
+            currentTaskType = 'fixed';
+            selectTaskType('fixed');
+        }
+
+        function saveTask() {
+            const title = document.getElementById('taskTitle').value.trim();
+            const description = document.getElementById('taskDescription').value.trim();
+
+            if (!title) {
+                alert('Please enter a task title');
+                return;
+            }
+
+            let deadline;
+            let recurrenceInterval = null;
+
+            if (currentTaskType === 'fixed') {
+                deadline = document.getElementById('taskDeadline').value;
+                if (!deadline) {
+                    alert('Please select a deadline');
+                    return;
+                }
+            } else {
+                recurrenceInterval = document.getElementById('recurrenceInterval').value;
+                deadline = getNextRecurrenceDate(recurrenceInterval);
+            }
+
+            if (editingTaskId) {
+                const index = tasks.findIndex(t => t.id === editingTaskId);
+                if (index !== -1) {
+                    tasks[index] = {
+                        ...tasks[index],
+                        title,
+                        description,
+                        deadline,
+                        taskType: currentTaskType,
+                        recurrenceInterval: currentTaskType === 'recurring' ? recurrenceInterval : null
+                    };
+                }
+            } else {
+                const task = {
+                    id: Date.now(),
+                    title,
+                    description,
+                    deadline,
+                    completed: false,
+                    taskType: currentTaskType,
+                    recurrenceInterval: currentTaskType === 'recurring' ? recurrenceInterval : null,
+                    createdAt: new Date().toISOString()
+                };
+                tasks.push(task);
+            }
+
+            saveTasks();
+            closeTaskForm();
+            renderTasks();
+        }
+
+        function editTask(id) {
+            const task = tasks.find(t => t.id === id);
+            if (!task) return;
+
+            editingTaskId = id;
+            currentTaskType = task.taskType || 'fixed';
+            selectTaskType(currentTaskType);
+
+            document.getElementById('formTitle').textContent = 'Edit Task';
+            document.getElementById('submitBtn').textContent = 'Update Task';
+            document.getElementById('taskTitle').value = task.title;
+            document.getElementById('taskDescription').value = task.description;
+
+            if (task.taskType === 'fixed') {
+                document.getElementById('taskDeadline').value = task.deadline;
+            } else {
+                document.getElementById('recurrenceInterval').value = task.recurrenceInterval || 'daily';
+            }
+
+            document.getElementById('taskForm').classList.remove('hidden');
+        }
+
+        function deleteTask(id) {
+            if (confirm('Are you sure you want to delete this task?')) {
+                // Track as deleted/removed
+                stats.deletedOrExpired++;
+                stats.totalFinished++;
+
+                tasks = tasks.filter(t => t.id !== id);
+                saveTasks();
+                saveStats();
+                updateCompletionScore();
+                renderTasks();
+            }
+        }
+
+        function completeTask(id) {
+            const task = tasks.find(t => t.id === id);
+            if (!task) return;
+
+            if (task.taskType === 'recurring') {
+                // Track recurring task completion
+                const isOnTime = new Date(task.deadline) >= new Date(getTodayString());
+                if (isOnTime) {
+                    stats.completedOnTime++;
+                } else {
+                    stats.deletedOrExpired++;
+                }
+                stats.totalFinished++;
+
+                // Reset for next occurrence
+                const nextDeadline = getNextRecurrenceDate(task.recurrenceInterval);
+                task.deadline = nextDeadline;
+                task.completed = false;
+                showSaveStatus('Task reset for next ' + task.recurrenceInterval + ' occurrence!');
+            } else {
+                // Track fixed task completion
+                const isOnTime = new Date(task.deadline) >= new Date(getTodayString());
+                if (isOnTime) {
+                    stats.completedOnTime++;
+                } else {
+                    stats.deletedOrExpired++;
+                }
+                stats.totalFinished++;
+
+                // Remove fixed task
+                tasks = tasks.filter(t => t.id !== id);
+                showSaveStatus('Task completed and removed!');
+            }
+
+            saveTasks();
+            saveStats();
+            updateCompletionScore();
+            renderTasks();
+        }
+
+        function toggleCritical() {
+            showCritical = !showCritical;
+            renderTasks();
+        }
+
+        function getDaysUntilDeadline(deadline) {
+            const now = new Date();
+            now.setHours(0, 0, 0, 0);
+            const deadlineDate = new Date(deadline);
+            deadlineDate.setHours(0, 0, 0, 0);
+            const diffTime = deadlineDate - now;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            return diffDays;
+        }
+
+        function getUrgencyBadge(deadline) {
+            const days = getDaysUntilDeadline(deadline);
+            if (days < 0) return {
+                class: 'overdue',
+                text: 'Overdue by ' + Math.abs(days) + ' days'
+            };
+            if (days === 0) return {
+                class: 'urgent',
+                text: 'DUE TODAY'
+            };
+            if (days <= 2) return {
+                class: 'warning',
+                text: days + ' days left'
+            };
+            if (days <= 7) return {
+                class: 'caution',
+                text: days + ' days left'
+            };
+            return {
+                class: 'safe',
+                text: days + ' days left'
+            };
+        }
+
+        function formatDate(dateString) {
+            return new Date(dateString).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+            });
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function renderTasks() {
+            const activeTasks = tasks.filter(t => !t.completed);
+
+            // Separate fixed and recurring tasks
+            const fixedTasks = activeTasks.filter(t => t.taskType === 'fixed');
+            const recurringTasks = activeTasks.filter(t => t.taskType === 'recurring');
+
+            // Apply EDF (Earliest Deadline First) to each type separately
+            const sortedFixedTasks = fixedTasks.sort((a, b) => {
+                const deadlineDiff = new Date(a.deadline) - new Date(b.deadline);
+                if (deadlineDiff !== 0) return deadlineDiff;
+                return a.id - b.id;
+            });
+
+            const sortedRecurringTasks = recurringTasks.sort((a, b) => {
+                const deadlineDiff = new Date(a.deadline) - new Date(b.deadline);
+                if (deadlineDiff !== 0) return deadlineDiff;
+                return a.id - b.id;
+            });
+
+            // Identify critical tasks (deadline < 3 days) from both types
+            const criticalTasks = activeTasks.filter(t => getDaysUntilDeadline(t.deadline) < 3)
+                .sort((a, b) => {
+                    const deadlineDiff = new Date(a.deadline) - new Date(b.deadline);
+                    if (deadlineDiff !== 0) return deadlineDiff;
+                    return a.id - b.id;
+                });
+
+            // Update stats
+            document.getElementById('fixedCount').textContent = fixedTasks.length;
+            document.getElementById('recurringCount').textContent = recurringTasks.length;
+            document.getElementById('criticalCount').textContent = criticalTasks.length;
+
+            // Render critical section
+            const criticalSection = document.getElementById('criticalSection');
+            if (showCritical && criticalTasks.length > 0) {
+                criticalSection.style.display = 'block';
+                renderTaskList('criticalList', criticalTasks, true);
+            } else {
+                criticalSection.style.display = 'none';
+            }
+
+            // Render fixed tasks
+            renderTaskList('fixedTaskList', sortedFixedTasks, false);
+
+            // Render recurring tasks
+            renderTaskList('recurringTaskList', sortedRecurringTasks, false);
+        }
+
+        function renderTaskList(containerId, tasksList, isCritical) {
+            const container = document.getElementById(containerId);
+
+            if (tasksList.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-text">No tasks yet</div>
+                        <div class="empty-subtext">Add a new task to get started</div>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = tasksList.map((task, index) => {
+                        const urgency = getUrgencyBadge(task.deadline);
+                        const isCriticalTask = getDaysUntilDeadline(task.deadline) < 3;
+                        const taskTypeLabel = task.taskType === 'recurring' ? 'Recurring (' + (task.recurrenceInterval || 'daily') + ')' : 'Fixed Deadline';
+                        const taskTypeBadge = task.taskType === 'recurring' ? 'recurring-type' : 'fixed-type';
+
+                        return `
+                    <div class="task-item ${isCriticalTask ? 'critical' : ''}">
+                        <div class="task-content">
+                            <div class="task-number ${isCriticalTask ? 'critical' : task.taskType === 'recurring' ? 'recurring' : ''}">
+                                ${index + 1}
+                            </div>
+                            <div class="task-details">
+                                <div class="task-header">
+                                    <h3 class="task-title">${escapeHtml(task.title)}</h3>
+                                    <div class="task-actions">
+                                        <button class="btn-icon complete" onclick="completeTask(${task.id})" title="${task.taskType === 'recurring' ? 'Complete & reset' : 'Complete & remove'}">
+                                            Complete
+                                        </button>
+                                        <button class="btn-icon" onclick="editTask(${task.id})" title="Edit">
+                                            Edit
+                                        </button>
+                                        <button class="btn-icon delete" onclick="deleteTask(${task.id})" title="Delete">
+                                            Delete
+                                        </button>
+                                    </div>
+                                </div>
+                                ${task.description ? `<p class="task-description">${escapeHtml(task.description)}</p>` : ''}
+                                <div class="task-meta">
+                                    <span class="badge ${urgency.class}">
+                                        ${urgency.text}
+                                    </span>
+                                    <span class="badge info">
+                                        ${formatDate(task.deadline)}
+                                    </span>
+                                    <span class="badge ${taskTypeBadge}">
+                                        ${taskTypeLabel}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+    </script>
+</body>
+
+</html>
