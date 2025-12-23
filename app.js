@@ -197,19 +197,25 @@ function checkAndResetTasks() {
     for (let i = 0; i < tasks.length; i++) {
         const task = tasks[i];
         if (task.taskType === 'recurring') {
-            // Check if the task was completed today and should reappear
-            if (task.completedToday && task.completedToday !== today) {
-                // New day - clear the completion flag so task reappears
-                delete task.completedToday;
-                tasksModified = true;
+            // Check if task's deadline has passed (it's time to show it again)
+            if (task.completedToday) {
+                const completedDate = new Date(task.completedToday);
+                const deadlineDate = new Date(task.deadline);
+                const todayDate = new Date(today);
+
+                // If today is >= deadline, the task should reappear
+                if (todayDate >= deadlineDate) {
+                    delete task.completedToday;
+                    tasksModified = true;
+                }
             }
 
+            // If deadline has passed and task is not completed today, update deadline
             const taskDate = task.deadline;
-            if (taskDate < today) {
+            if (taskDate < today && !task.completedToday) {
                 // Calculate next deadline based on recurrence interval
                 const nextDeadline = getNextRecurrenceDate(task.recurrenceInterval);
                 task.deadline = nextDeadline;
-                delete task.completedToday; // Clear completion flag
                 tasksModified = true;
             }
         }
@@ -350,16 +356,26 @@ function editTask(id) {
 }
 
 function deleteTask(id) {
-    if (confirm('Are you sure you want to delete this task?')) {
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+
+    const taskTypeText = task.taskType === 'recurring' ? 'recurring task' : 'task';
+    const confirmMsg = task.taskType === 'recurring' ?
+        `Delete this recurring task permanently? It will NOT reappear after deletion.` :
+        `Are you sure you want to delete this task?`;
+
+    if (confirm(confirmMsg)) {
         // Track as deleted/removed
         stats.deletedOrExpired++;
         stats.totalFinished++;
 
+        // Permanently remove task (both fixed and recurring)
         tasks = tasks.filter(t => t.id !== id);
         saveTasks();
         saveStats();
         updateCompletionScore();
         renderTasks();
+        showSaveStatus(`${task.taskType === 'recurring' ? 'Recurring task' : 'Task'} permanently deleted!`);
     }
 }
 
@@ -377,9 +393,16 @@ function completeTask(id) {
         }
         stats.totalFinished++;
 
-        // Mark as completed today - task will be hidden until midnight
+        // Mark as completed today - task will be hidden until next recurrence
         task.completedToday = getTodayString();
-        showSaveStatus('Task completed! Will reappear tomorrow.');
+
+        // Calculate next deadline based on recurrence interval
+        const nextDeadline = getNextRecurrenceDate(task.recurrenceInterval);
+        task.deadline = nextDeadline;
+
+        const intervalText = task.recurrenceInterval === 'daily' ? 'tomorrow' :
+            task.recurrenceInterval === 'weekly' ? 'next week' : 'next month';
+        showSaveStatus(`Task completed! Will reappear ${intervalText}.`);
     } else {
         // Track fixed task completion
         const isOnTime = new Date(task.deadline) >= new Date(getTodayString());
@@ -638,4 +661,17 @@ function importData() {
     };
     
     input.click();
+}
+
+function resetCompletionStats() {
+    if (confirm('Are you sure you want to reset all completion statistics? This will reset your on-time completion rate to 0%.')) {
+        stats = {
+            completedOnTime: 0,
+            deletedOrExpired: 0,
+            totalFinished: 0
+        };
+        saveStats();
+        updateCompletionScore();
+        showSaveStatus('Completion statistics reset!');
+    }
 }
