@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EDF Task Scheduler</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="header">
+        <div class="header-content">
+            <div class="header-left">
+                <div class="header-title">
+                    <h1>Task Scheduler</h1>
+                    <p class="header-subtitle">Organized by Earliest Deadline First</p>
+                </div>
+                <span id="saveStatus" class="save-status"></span>
+            </div>
+            <div class="header-buttons">
+                <button class="btn-export" onclick="exportData()" title="Export all data to file">
+                    <span>Export</span>
+                </button>
+                <button class="btn-import" onclick="importData()" title="Import data from file">
+                    <span>Import</span>
+                </button>
+                <button class="btn-primary" onclick="toggleAddTask()">
+                    <span>New Task</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>Loading your tasks...</p>
+        </div>
+
+        <div id="mainContent" class="main-content">
+            <div id="taskForm" class="task-form hidden">
+                <div class="form-header">
+                    <h2 id="formTitle">Add New Task</h2>
+                    <button class="btn-close" onclick="closeTaskForm()">×</button>
+                </div>
+
+                <div class="task-type-selector">
+                    <button type="button" class="task-type-btn active" onclick="selectTaskType('fixed')" id="fixedBtn">
+                        Fixed Deadline
+                    </button>
+                    <button type="button" class="task-type-btn recurring" onclick="selectTaskType('recurring')" id="recurringBtn">
+                        Recurring Task
+                    </button>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Task Title *</label>
+                    <input type="text" id="taskTitle" class="form-input" placeholder="Enter task title">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea id="taskDescription" class="form-textarea" rows="3" placeholder="Add details..."></textarea>
+                </div>
+                <div class="form-group" id="deadlineGroup">
+                    <label class="form-label" id="deadlineLabel">Deadline *</label>
+                    <input type="date" id="taskDeadline" class="form-input">
+                </div>
+                <div class="form-group" id="recurrenceGroup" style="display: none;">
+                    <label class="form-label">Recurrence Interval *</label>
+                    <select id="recurrenceInterval" class="form-select">
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly">Monthly</option>
+                    </select>
+                </div>
+                <button id="submitBtn" class="btn-submit" onclick="saveTask()">Add Task</button>
+            </div>
+
+            <div class="grid grid-3">
+                <div class="stats-card">
+                    <div class="stats-content">
+                        <div>
+                            <p class="stats-label">Fixed Tasks</p>
+                            <p class="stats-number" id="fixedCount">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="stats-card recurring">
+                    <div class="stats-content">
+                        <div>
+                            <p class="stats-label">Recurring Tasks</p>
+                            <p class="stats-number" id="recurringCount">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="stats-card critical" onclick="toggleCritical()">
+                    <div class="stats-content">
+                        <div>
+                            <p class="stats-label">Critical Tasks</p>
+                            <p class="stats-number" id="criticalCount">0</p>
+                            <p class="stats-subtitle">Deadline &lt; 3 days</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section performance-section">
+                <div class="section-header performance-header">
+                    <h2 class="section-title">Completion on Time Rate</h2>
+                </div>
+                <div class="performance-content">
+                    <div class="score-display">
+                        <div class="score-circle">
+                            <svg width="240" height="240" viewBox="0 0 240 240">
+                                <circle cx="120" cy="120" r="100" fill="none" stroke="rgba(100, 116, 139, 0.2)" stroke-width="14"/>
+                                <circle id="scoreCircle" cx="120" cy="120" r="100" fill="none" stroke="url(#scoreGradient)" stroke-width="14" 
+                                    stroke-dasharray="628.32" stroke-dashoffset="628.32" stroke-linecap="round" 
+                                    transform="rotate(-90 120 120)" style="transition: stroke-dashoffset 1s ease"/>
+                                <defs>
+                                    <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
+                                        <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+                                    </linearGradient>
+                                </defs>
+                            </svg>
+                            <div class="score-text">
+                                <div class="score-percentage" id="scorePercentage">0%</div>
+                                <div class="score-label">On Time Rate</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="criticalSection" class="section critical" style="display: none;">
+                <div class="section-header critical">
+                    <h2 class="section-title">
+                        <span>Critical Tasks - Urgent Attention Required!</span>
+                    </h2>
+                    <button class="btn-close" onclick="toggleCritical()">×</button>
+                </div>
+                <div id="criticalList" class="task-list"></div>
+            </div>
+
+            <div class="section">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <span>Fixed Tasks (EDF Order)</span>
+                    </h2>
+                </div>
+                <div id="fixedTaskList" class="task-list"></div>
+            </div>
+
+            <div class="section recurring">
+                <div class="section-header recurring">
+                    <h2 class="section-title">
+                        <span>Recurring Tasks (EDF Order)</span>
+                    </h2>
+                </div>
+                <div id="recurringTaskList" class="task-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
